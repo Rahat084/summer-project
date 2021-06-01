@@ -1,0 +1,16 @@
+#! /bin/bash
+# create metal supercell
+atomsk --create fcc {ALAT} Al orient [100] [010] [001] -duplicate {xa} {ya} {za} fccAl_{jobname}.cfg
+# create hollow of radius (CNT radius+ Catom radius)
+atomsk fccAl_matrix.cfg  -select in sphere 0.5*box 0.5*box 0.5*box {rs} -rmatom select hollow_{jobname}.cfg
+# Create SiC nanoparticle
+atomsk --create zb {SLAT} Si C \
+-duplicate {scell} {scell} {scell} \
+-select out sphere  0.5*box 0.5*box 0.5*box {rs} \
+-remove-atoms select \
+-shift {xshift} {yshift} {zshift} SiC_sphere_{jobname}.cfg
+# merge the hollow matrix and CNT
+atomsk --merge 2 hollow_{jobname}.cfg SiC_sphere_{jobname}.cfg {jobname}.cfg
+# create the lammps data file
+#atomsk 0.5%cnt.cfg lammps
+

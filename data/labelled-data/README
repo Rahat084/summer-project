@@ -1,0 +1,4 @@
+## Compileation of the output data with defect mode labelled 
+
+"data_all" -- data with all defect mode--> for trainning the defect classification model 
+"defect_free" --- data with only defect free mode ---> for training stress regression in defect free mode
