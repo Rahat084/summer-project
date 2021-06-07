@@ -1,13 +1,15 @@
 #Input file for uniaxial tensile loading of single crystal aluminum
 # Mark Tschopp, November 2010
 
+# ------------------------ VARIABLES ----------------------------
+variable simname index uniaxial_tension
 # ------------------------ INITIALIZATION ----------------------------
 units 		metal
 dimension	3
 boundary	p	p	p
 atom_style	atomic
 variable latparam equal 4.05
-
+log log.${simname}.txt
 # ----------------------- ATOM DEFINITION ----------------------------
 lattice		fcc ${latparam}
 region		whole block 0 12 0 12 0 12
