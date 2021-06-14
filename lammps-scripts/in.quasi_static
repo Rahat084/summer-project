@@ -1,0 +1,121 @@
+# Aluminum nanowire --- static uniaxial tension along x-direction
+#
+# Based on an example by Mark Tschopp and Nathan Rhodes available at:
+# https://icme.hpc.msstate.edu/mediawiki/index.php/LAMMPS_Fracture
+#
+#Modified version of Daniel S. Karls, Ellad B. Tadmor 8/7/2019
+# Furthe modified by Md. S. Hasan to work for bulk Aluminum
+
+ 
+# name of the simulation
+variable simname index uniten_misin
+log log.${simname}.txt
+
+# Initialization
+units metal
+dimension 3
+boundary p p p
+atom_style atomic
+
+# Simulation variables
+variable latticetype string "fcc"         #Other options: "fcc", "bcc", "sc"`
+variable a0 equal 4.05                    #Equilibrium lattice constant
+variable wire_len_x equal 12              #Nanowire length in x-direction (in unit cells)
+variable wire_len_y equal 12              #Nanowire length in y-direction (in unit cells)
+variable wire_len_z equal 12              #Nanowire length in z-direction (in unit cells)
+variable strain_increment equal 0.0000005 #Increment of strain relative to ref config at each load step
+variable number_load_steps equal 1000000  #Number of load steps
+
+# Derived/other variables
+variable vacuum_pad equal 0
+
+# Set the vacuum along the y and z directions
+variable box_min_y equal -${vacuum_pad}
+variable box_max_y equal ${wire_len_y}+${vacuum_pad}
+variable box_min_z equal -${vacuum_pad}
+variable box_max_z equal ${wire_len_z}+${vacuum_pad}
+variable box_yz_area equal (${box_max_y}-${box_min_y})*(${box_max_z}-${box_min_z})*${a0}^2
+variable wire_yz_area equal ${wire_len_y}*${wire_len_z}*${a0}^2
+
+# Construct lattice
+lattice ${latticetype} ${a0}
+region supercell block 0 ${wire_len_x} ${box_min_y} ${box_max_y} ${box_min_z} ${box_max_z} units lattice
+create_box 1 supercell
+region nanowire block EDGE EDGE 0 ${wire_len_y} 0 ${wire_len_z} units lattice
+create_atoms 1 region nanowire
+
+# Create imperfection ---> No imperfection
+#variable atomx equal floor(${wire_len_x}/2)
+#variable atomy equal 0.0
+#variable atomz equal 0.0
+#variable atomrad equal 0.1
+#region void sphere ${atomx} ${atomy} ${atomz} ${atomrad}
+#delete_atoms region void
+
+# Set mass to dummy value (not used in static minimization)
+mass 1 1.0
+
+# Specify potential
+pair_style eam/alloy
+pair_coeff * * Al99.eam.alloy Al
+
+# First, perform a static minimization with respect to all atomic positions
+# under the condition that the box size relax along the axial (x) direction in
+# order to achieve zero stress along this dimension.
+thermo 10
+thermo_style custom step lx ly lz press pxx pyy pzz pe
+min_style cg
+fix 1 all box/relax x 0.0 fixedpoint 0 0 0
+minimize 1.0e-16 1.0e-16 5000 10000
+unfix 1
+
+# Record stress
+variable total_strain equal 0.0
+variable pressf1 equal -pxx/10000
+variable pressf equal ${pressf1}*${box_yz_area}/${wire_yz_area}
+print "STEP 0; strain: ${total_strain}; engineering stress (Bar): ${pressf}"
+print "${total_strain} ${pressf}" file out_stress-strain_lmp_${simname}.dat
+
+# Dump the relaxed refenence configuration prior to straining
+dump dmp1 all atom 1 out_config_${simname}.dump
+dump_modify dmp1 scale no
+run 0
+undump dmp1
+
+#############################################################
+# Now execute an incremental strain along the axial dimension
+#############################################################
+# Define looping variables
+variable n loop ${number_load_steps}
+label loop
+
+    # Compute stretch factor relative to the deformed length needed to
+    # obtain a strain increment of `strain_increment` relative to the
+    # reference configuration (i.e. engineering or Lagrangian strain)
+    variable stretch_factor equal 1.0+${strain_increment}/(1+${n}*${strain_increment})
+    
+    # Calculate total strain for this step
+    variable total_strain equal ${n}*${strain_increment}
+    
+    # Stretch box
+    change_box all x scale ${stretch_factor} remap
+    
+    # Minimize positions of atoms within cell
+    minimize 1.0e-10 1.0e-10 1000 10000
+    
+    # Print out stress
+    variable pressf1 equal -pxx
+    variable pressf equal ${pressf1}*${box_yz_area}/${wire_yz_area}
+    print "STEP ${n}; strain: ${total_strain}; engineering stress (Bar): ${pressf}"
+    print "${total_strain} ${pressf}" append out_stress-strain_lmp_${simname}.dat
+    
+    # Dump relaxed strained configration
+    dump dmp1 all atom 1 out_config_lmp.dump
+    dump_modify dmp1 append yes scale no
+    run 0
+    undump dmp1
+    next n
+    jump SELF loop
+
+print "Simulation complete"
+
