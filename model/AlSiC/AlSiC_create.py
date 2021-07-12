@@ -7,15 +7,15 @@ Author: Md S Hasan"""
 import os
 import shutil
 
-ALAT= 4.046
-SLAT= 4.3595
+ALAT= 4.046 # Lattice distance of matrix
+SLAT= 4.3595 # Lattice distance of Silicon carbide
 xa,ya,za=25,25,25
 # Load the AlSiC_atomsk_template file as a template.
 with open("AlSiC_atomsk_template") as f:
     template = f.read()
 
 # Set default values for various parameters
-rss = [10.0] #Angstrom
+rss = [10.0] # radiuses of SiC particle in Angstrom
 #n_particle=[0,25,50,100] #
 
 # Loop through a series of values of grain size and percent H
