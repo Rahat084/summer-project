@@ -6,21 +6,24 @@ Author: Md S Hasan"""
 
 import os
 import shutil
+from cellsize_calculation import cell_size
 
 ALAT= 4.046 # Lattice distance of matrix
 SLAT= 4.3595 # Lattice distance of Silicon carbide
-xa,ya,za=25,25,25
+# set max_cell_size,radius_rage,radius_in,vfrac_range and vfrac_inc
+params=cell_size(max_cell_size=50,radius_range=[7,29])
 # Load the AlSiC_atomsk_template file as a template.
 with open("AlSiC_atomsk_template") as f:
     template = f.read()
 
-# Set default values for various parameters
-rss = [10.0] # radiuses of SiC particle in Angstrom
-#n_particle=[0,25,50,100] #
-
-# Loop through a series of values of grain size and percent H
-for rs in rss:
-    jobname=f"AlSiC_dia_{rs}"
+# Loop through a series of values of particle radius and volume fraction
+for param in params:
+    rs,vfrac,cell=param
+    jobname=f"AlSiC_rad_{rs}_vfrac_{vfrac}"
+    rs= rs*10 # convert from nm to Angstrom
+    cell= cell*10 # convert from nm to Angstrom
+    a=int(cell/ALAT)
+    xa,ya,za=a,a,a
     scell=int(rs/2)
     xshift=0.5*xa*ALAT-0.5*SLAT*scell
     yshift=0.5*ya*ALAT-0.5*SLAT*scell
